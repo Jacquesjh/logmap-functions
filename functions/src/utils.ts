@@ -8,22 +8,15 @@ export function getSaoPauloTimeZoneCurrentDate() {
   const today = new Date();
   const options = {
     timeZone: "America/Sao_Paulo",
+    year: "numeric" as "numeric",
+    month: "2-digit" as "2-digit",
+    day: "2-digit" as "2-digit",
   };
 
-  const formatter = new Intl.DateTimeFormat("default", options);
-  const parts = formatter.formatToParts(today);
+  const formatter = new Intl.DateTimeFormat("en-US", options);
+  const formattedDate = formatter.format(today);
 
-  let currentDate = "";
-  for (const part of parts) {
-    if (part.type === "year") {
-      currentDate += part.value;
-    } else if (part.type === "month") {
-      currentDate += `-${part.value.padStart(2, "0")}`;
-    } else if (part.type === "day") {
-      currentDate += `-${part.value.padStart(2, "0")}`;
-    }
-  }
-  return currentDate;
+  return formattedDate.replace(/(\d\d)\/(\d\d)\/(\d{4})/, "$3-$1-$2");
 }
 
 /**
@@ -36,6 +29,9 @@ export function getSaoPauloTimeZonePreviousDate() {
   const today = new Date();
   const options = {
     timeZone: "America/Sao_Paulo",
+    year: "numeric" as "numeric",
+    month: "2-digit" as "2-digit",
+    day: "2-digit" as "2-digit",
   };
 
   // Subtract one day from the current date
@@ -43,17 +39,7 @@ export function getSaoPauloTimeZonePreviousDate() {
   previousDate.setDate(previousDate.getDate() - 1);
 
   const formatter = new Intl.DateTimeFormat("default", options);
-  const parts = formatter.formatToParts(previousDate);
+  const formattedDate = formatter.format(today);
 
-  let date = "";
-  for (const part of parts) {
-    if (part.type === "year") {
-      date += part.value;
-    } else if (part.type === "month") {
-      date += `-${part.value.padStart(2, "0")}`;
-    } else if (part.type === "day") {
-      date += `-${part.value.padStart(2, "0")}`;
-    }
-  }
-  return date;
+  return formattedDate.replace(/(\d\d)\/(\d\d)\/(\d{4})/, "$3-$1-$2");
 }
