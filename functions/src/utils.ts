@@ -8,9 +8,9 @@ export function getSaoPauloTimeZoneCurrentDate() {
   const today = new Date();
   const options = {
     timeZone: "America/Sao_Paulo",
-    year: "numeric" as "numeric",
-    month: "2-digit" as "2-digit",
-    day: "2-digit" as "2-digit",
+    year: "numeric" as const,
+    month: "2-digit" as const,
+    day: "2-digit" as const,
   };
 
   const formatter = new Intl.DateTimeFormat("en-US", options);
@@ -29,9 +29,9 @@ export function getSaoPauloTimeZonePreviousDate() {
   const today = new Date();
   const options = {
     timeZone: "America/Sao_Paulo",
-    year: "numeric" as "numeric",
-    month: "2-digit" as "2-digit",
-    day: "2-digit" as "2-digit",
+    year: "numeric" as const,
+    month: "2-digit" as const,
+    day: "2-digit" as const,
   };
 
   // Subtract one day from the current date
