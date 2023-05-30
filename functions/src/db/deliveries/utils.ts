@@ -105,3 +105,38 @@ export function addDeliveryRefToFutureDeliveriesRef(
 
   return futureDeliveriesRef;
 }
+
+/**
+ * Update the activeDeliveriesRef field of a truck document in Firestore.
+ * @param {admin.firestore.DocumentReference} truckRef - Reference to
+ * the truck document.
+ *
+ * @param {admin.firestore.DocumentReference} deliveryRef - Reference to
+ * the delivery document.
+ *
+ * @param {string} action - Action to perform: 'add' or 'remove'.
+ *
+ * @return {Promise<void>} Promise that resolves when the update is complete.
+ */
+export async function updateTruckActiveDeliveriesRef(
+  truckRef: admin.firestore.DocumentReference,
+  deliveryRef: admin.firestore.DocumentReference,
+  action: "add" | "remove"
+): Promise<void> {
+  const truckDoc = await truckRef.get();
+
+  if (!truckDoc.exists) {
+    console.log("Assigned truck document does not exist");
+    return;
+  }
+
+  if (action === "add") {
+    await truckRef.update({
+      activeDeliveriesRef: admin.firestore.FieldValue.arrayUnion(deliveryRef),
+    });
+  } else if (action === "remove") {
+    await truckRef.update({
+      activeDeliveriesRef: admin.firestore.FieldValue.arrayRemove(deliveryRef),
+    });
+  }
+}
