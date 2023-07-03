@@ -29,6 +29,21 @@ export const writeActiveDeliveriesRef = functions.firestore
       console.log("New Delivery Date:", deliveryDate);
 
       if (
+        previousDeliveryData?.isComplete == true &&
+        deliveryData?.isComplete == true
+      ) {
+        console.log(
+          "Something changed about the delivery while it is " +
+            "already completed"
+        );
+        return null;
+      }
+      if (previousDeliveryData?.isComplete != deliveryData?.isComplete) {
+        console.log("The isComplete status changed");
+        return null;
+      }
+
+      if (
         deliveryDate !== currentDate &&
         previousDeliveryDate !== currentDate
       ) {
@@ -49,11 +64,11 @@ export const writeActiveDeliveriesRef = functions.firestore
             "add"
           );
           console.log("DeliveryRef added to the truck's activeDeliveriesRef!");
+          return null;
         }
-      } else if (
-        deliveryData?.truckRef &&
-        previousDeliveryDate !== deliveryDate
-      ) {
+      }
+
+      if (deliveryData?.truckRef && previousDeliveryDate !== deliveryDate) {
         // The delivery date changed but the truckRef remains the same (valid)
         console.log("The truck remains the same but the date changed...");
         await updateTruckActiveDeliveriesRef(
@@ -72,7 +87,9 @@ export const writeActiveDeliveriesRef = functions.firestore
           );
           console.log("DeliveryRef added to the truck's activeDeliveriesRef!");
         }
-      } else if (previousDeliveryData?.truckRef !== deliveryData?.truckRef) {
+        return null;
+      }
+      if (previousDeliveryData?.truckRef !== deliveryData?.truckRef) {
         // The delivery changed trucks
         console.log("The delivery changed trucks");
         console.log("Previous Truck ID: ", previousDeliveryData?.truckRef?.id);
@@ -103,6 +120,7 @@ export const writeActiveDeliveriesRef = functions.firestore
             "DeliveryRef added to the new truck's activeDeliveriesRef!"
           );
         }
+        return null;
       }
     } catch (error) {
       console.error(
