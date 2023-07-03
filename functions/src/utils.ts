@@ -13,7 +13,7 @@ export function getSaoPauloTimeZoneCurrentDate() {
     day: "2-digit" as const,
   };
 
-  const formatter = new Intl.DateTimeFormat("en-US", options);
+  const formatter = new Intl.DateTimeFormat("default", options);
   const formattedDate = formatter.format(today);
 
   return formattedDate.replace(/(\d\d)\/(\d\d)\/(\d{4})/, "$3-$1-$2");
@@ -39,7 +39,7 @@ export function getSaoPauloTimeZonePreviousDate() {
   previousDate.setDate(previousDate.getDate() - 1);
 
   const formatter = new Intl.DateTimeFormat("default", options);
-  const formattedDate = formatter.format(today);
+  const formattedDate = formatter.format(previousDate);
 
   return formattedDate.replace(/(\d\d)\/(\d\d)\/(\d{4})/, "$3-$1-$2");
 }
