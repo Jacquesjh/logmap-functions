@@ -12,6 +12,7 @@ export interface GeoAddress {
 export interface Truck {
   activeDeliveriesRef: FirebaseFirestore.DocumentReference[];
   completedDeliveriesRef: FirebaseFirestore.DocumentReference[];
+  currentDateDriversRef: FirebaseFirestore.DocumentReference[];
   driverRef: FirebaseFirestore.DocumentReference | null;
   futureDeliveriesRef: {
     [date: string]: FirebaseFirestore.DocumentReference[];
@@ -30,11 +31,11 @@ export interface HistoryTruck {
     [date: string]: {
       activeDeliveriesRef: FirebaseFirestore.DocumentReference[];
       completedDeliveriesRef: FirebaseFirestore.DocumentReference[];
-      driverRef: FirebaseFirestore.DocumentReference;
+      currentDateDriversRef: FirebaseFirestore.DocumentReference[];
       geoAddressArray: GeoAddress[];
     };
   };
-  truckRef: FirebaseFirestore.DocumentReference
+  truckRef: FirebaseFirestore.DocumentReference;
 }
 
 export interface Delivery {

@@ -1,6 +1,6 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import {DocumentReference, WriteResult} from "firebase-admin/firestore";
+import {WriteResult} from "firebase-admin/firestore";
 
 import {HistoryTruck, Truck} from "../../models";
 
@@ -40,28 +40,11 @@ export const updateTruckHistoryAndDeliveries = functions.pubsub
                   ` ${truckData.completedDeliveriesRef}`
               );
 
-              if (
-                !truckData.activeDeliveriesRef ||
-                truckData.activeDeliveriesRef.length === 0
-              ) {
-                // The truck had no deliveries
-                console.log(
-                  "------- The truck had no " +
-                    `deliveries: ${truckData.activeDeliveriesRef}`
-                );
+              if (truckData.geoAddressArray.length === 0) {
+                // The truck made no route on the previous day
+                console.log("------- The truck did not registred any movement");
                 continue;
               }
-
-              if (!truckData.driverRef) {
-                // The truck had no driver on the previous day
-                console.log("------- The truck had deliveries but no driver");
-                continue;
-              }
-
-              // if (!truckData.geoAddressArray) {
-              //   // The truck made no route on the previous day
-              //   continue;
-              // }
 
               const historyTruckRef = truckData.historyRef;
               const historyTruckData = (
@@ -76,7 +59,7 @@ export const updateTruckHistoryAndDeliveries = functions.pubsub
               historyTruckData.history[previousDate] = {
                 activeDeliveriesRef: truckData.activeDeliveriesRef,
                 completedDeliveriesRef: truckData.completedDeliveriesRef,
-                driverRef: truckData.driverRef,
+                currentDateDriversRef: truckData.currentDateDriversRef,
                 geoAddressArray: truckData.geoAddressArray,
               };
 
@@ -97,7 +80,7 @@ export const updateTruckHistoryAndDeliveries = functions.pubsub
               // from the futureDeliveriesRef
               const currentDate = getSaoPauloTimeZoneCurrentDate();
 
-              let currentDateDeliveriesRef: DocumentReference[] = [];
+              let currentDateDeliveriesRef = truckData.activeDeliveriesRef;
 
               if (truckData.futureDeliveriesRef[currentDate]) {
                 console.log("There are deliveries scheduled for today!");
@@ -114,6 +97,7 @@ export const updateTruckHistoryAndDeliveries = functions.pubsub
                 truckDoc.ref.update({
                   activeDeliveriesRef: currentDateDeliveriesRef,
                   completedDeliveriesRef: [],
+                  currentDateDriversRef: [],
                   futureDeliveriesRef: truckData.futureDeliveriesRef,
                   geoAddressArray: [],
                 })

@@ -1,6 +1,7 @@
 // Firebase imports
 import * as admin from "firebase-admin";
 import * as functions from "firebase-functions";
+
 import {Delivery, Truck} from "../../models";
 
 /**
@@ -36,7 +37,12 @@ export const handleDeliveryCompletion = functions.firestore
             change.after.ref
           ),
         });
+        console.log("Truck updated successfully!");
+      } catch (error) {
+        console.error("Error updating truck:", error);
+      }
 
+      try {
         // Update delivery's deliveredAt and driverRef fields
         await change.after.ref.update({
           driverRef: truckData.driverRef,
