@@ -38,7 +38,11 @@ export const writeActiveDeliveriesRef = functions.firestore
         );
         return null;
       }
-      if (previousDeliveryData?.isComplete != deliveryData?.isComplete) {
+
+      if (
+        previousDeliveryData != undefined &&
+        previousDeliveryData?.isComplete != deliveryData?.isComplete
+      ) {
         console.log("The isComplete status changed");
         return null;
       }
@@ -154,9 +158,14 @@ export const writeFutureDeliveriesRef = functions.firestore
     console.log("Previous Delivery Date:", previousDeliveryDate);
     console.log("New Delivery Date:", deliveryDate);
 
+    console.log("Current Date:", currentDate);
+
     // If the deliveryDate and previousDeliveryDate are not in the future,
     // then do nothing, because another function must handle it
-    if (deliveryDate <= currentDate && previousDeliveryDate <= currentDate) {
+    if (
+      (deliveryDate == undefined || deliveryDate <= currentDate) &&
+      (previousDeliveryDate == undefined || previousDeliveryDate <= currentDate)
+    ) {
       console.log(
         "Both the new date and the previous date are not in the future"
       );
@@ -221,7 +230,10 @@ export const writeFutureDeliveriesRef = functions.firestore
       await truckRef.update({futureDeliveriesRef: modifiedFutureDeliveriesRef});
 
       console.log("Delivery reference removed from future deliveries");
-    } else if (!change.before.exists && change.after.exists) {
+      return null;
+    }
+
+    if (!change.before.exists && change.after.exists) {
       // Document created
       console.log("Delivery document created");
 
@@ -236,95 +248,95 @@ export const writeFutureDeliveriesRef = functions.firestore
       await truckRef.update({futureDeliveriesRef: modifiedFutureDeliveriesRef});
 
       console.log("Delivery reference added to future deliveries");
-    } else {
-      // Document updated
-      console.log("Delivery document updated");
+      return null;
+    }
+    // Document updated
+    console.log("Delivery document updated");
 
-      // If the delivery document has been updated, check if the assigned
-      // truck has changed and if the deliveryDate has changed
-      const previousData = change.before.data() as {
-        truckRef: admin.firestore.DocumentReference;
-      };
-      const previousTruckRef = previousData.truckRef;
+    // If the delivery document has been updated, check if the assigned
+    // truck has changed and if the deliveryDate has changed
+    const previousData = change.before.data() as {
+      truckRef: admin.firestore.DocumentReference;
+    };
+    const previousTruckRef = previousData.truckRef;
 
-      if (previousTruckRef && previousTruckRef.id !== truckRef.id) {
-        // The delivery was associated with a different truck before
-        console.log("Delivery was associated with a different truck before");
+    if (previousTruckRef && previousTruckRef.id !== truckRef.id) {
+      // The delivery was associated with a different truck before
+      console.log("Delivery was associated with a different truck before");
 
-        // Remove the delivery from the previous truck's futureDeliveriesRef
-        const previousTruckDoc = await previousTruckRef.get();
-        const previousTruckData = previousTruckDoc.data();
+      // Remove the delivery from the previous truck's futureDeliveriesRef
+      const previousTruckDoc = await previousTruckRef.get();
+      const previousTruckData = previousTruckDoc.data();
 
-        if (!previousTruckData) {
-          console.log("The previous truck document does not exist");
-          return null;
-        }
+      if (!previousTruckData) {
+        console.log("The previous truck document does not exist");
+        return null;
+      }
 
-        const previousTruckFutureDeliveriesRef =
-          previousTruckData.futureDeliveriesRef as FutureDeliveriesRefType;
+      const previousTruckFutureDeliveriesRef =
+        previousTruckData.futureDeliveriesRef as FutureDeliveriesRefType;
 
-        // Remove the deliveryRef from the previous truck
-        const modifiedPreviousTruckFutureDeliveriesRef =
-          removeDeliveryRefFromFutureDeliveriesRef(
-            previousTruckFutureDeliveriesRef,
-            deliveryRef,
-            deliveryDate
-          );
-
-        await previousTruckRef.update({
-          futureDeliveriesRef: modifiedPreviousTruckFutureDeliveriesRef,
-        });
-
-        console.log(
-          "Delivery reference removed from previous truck's future deliveries"
-        );
-
-        // Add the delivery to the new truck's futureDeliveriesRef
-        const modifiedFutureDeliveriesRef = addDeliveryRefToFutureDeliveriesRef(
-          futureDeliveriesRef,
+      // Remove the deliveryRef from the previous truck
+      const modifiedPreviousTruckFutureDeliveriesRef =
+        removeDeliveryRefFromFutureDeliveriesRef(
+          previousTruckFutureDeliveriesRef,
           deliveryRef,
           deliveryDate
         );
 
-        await truckRef.update({
-          futureDeliveriesRef: modifiedFutureDeliveriesRef,
-        });
+      await previousTruckRef.update({
+        futureDeliveriesRef: modifiedPreviousTruckFutureDeliveriesRef,
+      });
 
-        console.log(
-          "Delivery reference added to new truck's future deliveries"
+      console.log(
+        "Delivery reference removed from previous truck's future deliveries"
+      );
+
+      // Add the delivery to the new truck's futureDeliveriesRef
+      const modifiedFutureDeliveriesRef = addDeliveryRefToFutureDeliveriesRef(
+        futureDeliveriesRef,
+        deliveryRef,
+        deliveryDate
+      );
+
+      await truckRef.update({
+        futureDeliveriesRef: modifiedFutureDeliveriesRef,
+      });
+
+      console.log("Delivery reference added to new truck's future deliveries");
+    }
+
+    if (previousDeliveryDate !== deliveryDate) {
+      // The delivery date changed, so the deliveryRef must change arrays
+      console.log("Delivery date has changed");
+
+      // Remove the previousDeliveryDate if it is in the future
+      let modifiedMap = {...futureDeliveriesRef};
+
+      if (previousDeliveryDate > currentDate) {
+        // Only remove if the previous delivery date is in the future,
+        // otherwise it will be handled by another function
+        modifiedMap = removeDeliveryRefFromFutureDeliveriesRef(
+          futureDeliveriesRef,
+          deliveryRef,
+          previousDeliveryDate
         );
-      } else if (previousDeliveryDate !== deliveryDate) {
-        // The delivery date changed, so the deliveryRef must change arrays
-        console.log("Delivery date has changed");
-
-        // Remove the previousDeliveryDate if it is in the future
-        let modifiedMap = {...futureDeliveriesRef};
-
-        if (previousDeliveryDate > currentDate) {
-          // Only remove if the previous delivery date is in the future,
-          // otherwise it will be handled by another function
-          modifiedMap = removeDeliveryRefFromFutureDeliveriesRef(
-            futureDeliveriesRef,
-            deliveryRef,
-            previousDeliveryDate
-          );
-        }
-
-        if (deliveryDate > currentDate) {
-          // If the new delivery date is still in the future, add it to the
-          // truck's futureDeliveriesRef, otherwise it will be handled by
-          // another function
-          modifiedMap = addDeliveryRefToFutureDeliveriesRef(
-            modifiedMap,
-            deliveryRef,
-            deliveryDate
-          );
-        }
-
-        await truckRef.update({futureDeliveriesRef: modifiedMap});
-
-        console.log("Delivery reference updated in future deliveries");
       }
+
+      if (deliveryDate > currentDate) {
+        // If the new delivery date is still in the future, add it to the
+        // truck's futureDeliveriesRef, otherwise it will be handled by
+        // another function
+        modifiedMap = addDeliveryRefToFutureDeliveriesRef(
+          modifiedMap,
+          deliveryRef,
+          deliveryDate
+        );
+      }
+
+      await truckRef.update({futureDeliveriesRef: modifiedMap});
+
+      console.log("Delivery reference updated in future deliveries");
     }
 
     console.log("Function execution completed");

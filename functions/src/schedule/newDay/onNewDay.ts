@@ -2,7 +2,7 @@ import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import {WriteResult} from "firebase-admin/firestore";
 
-import {HistoryTruck, Truck} from "../../models";
+import {Delivery, HistoryTruck, Truck} from "../../models";
 
 import {
   getSaoPauloTimeZoneCurrentDate,
@@ -17,6 +17,10 @@ export const updateTruckHistoryAndDeliveries = functions.pubsub
       // Get all users
       const usersSnapshot = await admin.firestore().collection("users").get();
       const promises: Promise<void>[] = [];
+
+      // Get the fields you want to save from truck data
+      const previousDate = getSaoPauloTimeZonePreviousDate();
+      const currentDate = getSaoPauloTimeZoneCurrentDate();
 
       usersSnapshot.forEach((userDoc) => {
         const userTrucksCollectionRef = userDoc.ref.collection("trucks");
@@ -51,9 +55,6 @@ export const updateTruckHistoryAndDeliveries = functions.pubsub
                 await historyTruckRef.get()
               ).data() as HistoryTruck;
 
-              // Get the fields you want to save from truck data
-              const previousDate = getSaoPauloTimeZonePreviousDate();
-
               console.log(`Previous date: ${previousDate}`);
 
               historyTruckData.history[previousDate] = {
@@ -78,8 +79,6 @@ export const updateTruckHistoryAndDeliveries = functions.pubsub
               // If the truck has future deliveries with the current date,
               // then set then as the activeDeliveriesRef and remove them
               // from the futureDeliveriesRef
-              const currentDate = getSaoPauloTimeZoneCurrentDate();
-
               let currentDateDeliveriesRef = truckData.activeDeliveriesRef;
 
               if (truckData.futureDeliveriesRef[currentDate]) {
@@ -114,5 +113,53 @@ export const updateTruckHistoryAndDeliveries = functions.pubsub
       console.log("Truck history updated successfully!");
     } catch (error) {
       console.error("Error updating truck history:", error);
+    }
+  });
+
+export const updateLateDeliveries = functions.pubsub
+  .schedule("every day 00:02")
+  .timeZone("America/Sao_Paulo")
+  .onRun(async (context) => {
+    try {
+      // Get all users
+      const usersSnapshot = await admin.firestore().collection("users").get();
+      const promises: Promise<void>[] = [];
+
+      const previousDate = getSaoPauloTimeZonePreviousDate();
+      const currentDate = getSaoPauloTimeZoneCurrentDate();
+
+      usersSnapshot.forEach((userDoc) => {
+        const userDeliveriesCollectionRef =
+          userDoc.ref.collection("deliveries");
+
+        promises.push(
+          // Get all trucks for this user
+          userDeliveriesCollectionRef
+            .where("deliveryDate", "==", previousDate)
+            .get()
+            .then(async (deliverySnapshot) => {
+              const updateDeliveryPromises: Promise<WriteResult>[] = [];
+
+              for (const deliveryDoc of deliverySnapshot.docs) {
+                const deliveryData = deliveryDoc.data() as Delivery;
+
+                if (!deliveryData.isComplete) {
+                  updateDeliveryPromises.push(
+                    deliveryDoc.ref.update({
+                      deliveryDate: currentDate,
+                      customFlag: "late",
+                    })
+                  );
+                }
+              }
+
+              await Promise.all(updateDeliveryPromises);
+            })
+        );
+      });
+
+      await Promise.all(promises);
+    } catch (error) {
+      console.error("Error updating deliveries:", error);
     }
   });
