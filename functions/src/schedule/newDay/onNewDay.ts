@@ -44,12 +44,6 @@ export const updateTruckHistoryAndDeliveries = functions.pubsub
                   ` ${truckData.completedDeliveriesRef}`
               );
 
-              if (truckData.geoAddressArray.length === 0) {
-                // The truck made no route on the previous day
-                console.log("------- The truck did not registred any movement");
-                continue;
-              }
-
               const historyTruckRef = truckData.historyRef;
               const historyTruckData = (
                 await historyTruckRef.get()
@@ -57,24 +51,32 @@ export const updateTruckHistoryAndDeliveries = functions.pubsub
 
               console.log(`Previous date: ${previousDate}`);
 
-              historyTruckData.history[previousDate] = {
-                activeDeliveriesRef: truckData.activeDeliveriesRef,
-                completedDeliveriesRef: truckData.completedDeliveriesRef,
-                currentDateDriversRef: truckData.currentDateDriversRef,
-                geoAddressArray: truckData.geoAddressArray,
-              };
+              if (
+                truckData.activeDeliveriesRef.length === 0 &&
+                truckData.completedDeliveriesRef.length === 0 &&
+                truckData.currentDateDriversRef.length === 0 &&
+                truckData.geoAddressArray.length === 0
+              ) {
+                // Will only add an entry if something happened
+                historyTruckData.history[previousDate] = {
+                  activeDeliveriesRef: truckData.activeDeliveriesRef,
+                  completedDeliveriesRef: truckData.completedDeliveriesRef,
+                  currentDateDriversRef: truckData.currentDateDriversRef,
+                  geoAddressArray: truckData.geoAddressArray,
+                };
 
-              console.log(
-                "New entry on the truck's " +
-                  `history: ${historyTruckData.history[previousDate]}`
-              );
+                console.log(
+                  "New entry on the truck's " +
+                    `history: ${historyTruckData.history[previousDate]}`
+                );
 
-              // Update the truck document
-              updateHistoryTruckPromises.push(
-                historyTruckRef.update({history: historyTruckData.history})
-              );
+                // Update the truck document
+                updateHistoryTruckPromises.push(
+                  historyTruckRef.update({history: historyTruckData.history})
+                );
 
-              console.log("Updated this truck's history!");
+                console.log("Updated this truck's history!");
+              }
 
               // If the truck has future deliveries with the current date,
               // then set then as the activeDeliveriesRef and remove them
@@ -89,6 +91,13 @@ export const updateTruckHistoryAndDeliveries = functions.pubsub
                   truckData.futureDeliveriesRef[currentDate];
 
                 delete truckData.futureDeliveriesRef[currentDate];
+
+                // Remove older entries from the history, just in case
+                Object.keys(truckData.futureDeliveriesRef).forEach((date) => {
+                  if (date < currentDate) {
+                    delete truckData.futureDeliveriesRef[date];
+                  }
+                });
               }
 
               // Update the history document with the new data
